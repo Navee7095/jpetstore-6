@@ -1,0 +1,44 @@
+pipeline {
+    agent any
+    tools {
+        jdk 'java17'
+        maven 'maven3'
+    }
+    stages{
+        stage('clean workspace'){
+            steps{
+                cleanWs()
+            }
+        }
+        stage('checkout'){
+            steps{
+                checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/Navee7095/jpetstore-6.git']])
+            }
+        }
+        stage('mvn package'){
+            steps{
+                sh 'mvn package'
+            }
+        }
+        stage('docker build'){
+            steps{
+                script{
+                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
+                        sh 'docker build -t naveen1433/petshop4:v1.0.0 .'
+                        sh 'docker push naveen1433/petshop4:v1.0.0'
+                    }
+                }
+            }
+        }
+        stage('trivy'){
+            steps{
+                sh "trivy image naveen1433/petshop4:v1.0.0 >trivy.txt"
+            }
+        }
+        stage('deploy to container'){
+            steps{
+                sh 'docker run --name navee -d -p 8085:8080 naveen1433/petshop4:v1.0.0'
+            }
+        }
+    }
+}
